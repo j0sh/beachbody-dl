@@ -17,7 +17,7 @@ function fileSuffix(md:BBRMetadata, suffix:string){
 }
 
 function getExtension(s:string){
-    const ext = s.match(/\.gif$/)[0];
+    const ext = s.match(/\.\w+/)[0];
     if (ext) return ext;
     console.error("No extension found for", ext);
     Deno.exit(1);
@@ -138,7 +138,7 @@ const guid = md.metadata.guid;
 const ccURL = captionURL(md);
 const mainManifestURL = md.urls.playbackStandard;
 const thumbURL = md.thumbnail.image;
-const thumbExt = getExtension(thumbURL);
+const thumbExt = ".gif" //getExtension(thumbURL);
 const mainManifestFile = fileSuffix(md, "-MainManifest.m3u8");
 const ccFile = fileSuffix(md, "-English.srt");
 const mp4File = fileSuffix(md, ".mp4");
