@@ -2,6 +2,6 @@
 let
 in
 pkgs.mkShell {
-    packages = [ pkgs.curl pkgs.deno pkgs.ffmpeg-full ];
+    packages = [ pkgs.curl pkgs.deno pkgs.ffmpeg-full pkgs.jq ];
 }
 

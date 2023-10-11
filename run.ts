@@ -1,13 +1,26 @@
 type BBMetadata = {
     metadata: {
         guid: string;
+        program: string;
+        title: string;
+        description: string;
     };
+    thumbnail: {
+        image: string;
+    },
     captions: { url: string, type: "SRT", language: string }[]
 }
 
 function fileSuffix(md:BBRMetadata, suffix:string){
     const guid = md.metadata.guid;
     return guid+"/"+guid+suffix;
+}
+
+function getExtension(s:string){
+    const ext = s.match(/\.gif$/)[0];
+    if (ext) return ext;
+    console.error("No extension found for", ext);
+    Deno.exit(1);
 }
 
 function captionURL(md:BBRMetadata):string{
@@ -22,6 +35,11 @@ function captionURL(md:BBRMetadata):string{
 async function fetchToFile(url, dest){
     const res = await fetch(url);
     await Deno.writeTextFile(dest, await res.text());
+}
+
+async function fetchBinaryFile(url, dest){
+    const res = await fetch(url);
+    await Deno.writeFile(dest, res.body);
 }
 
 function findBestPlaylist(inp:string){
@@ -109,27 +127,6 @@ async function runFFmpeg(playlist:string, out:string){
     console.assert(code === 0);
 }
 
-async function runSubtitles(inMp4:string, inSub: string, out:string){
-    const cmd = new Deno.Command("ffmpeg", {
-        stdout: "piped",
-        stderr: "piped",
-        args: [
-            "-i", inMp4,
-            "-i", inSub,
-            "-c", "copy",
-            "-c:s", "mov_text",
-            "-metadata:s:s:0", "language=eng",
-            out,
-        ],
-    });
-    const process = cmd.spawn();
-    process.stdout.pipeTo(Deno.stdout.writable, { preventClose: true });
-    process.stderr.pipeTo(Deno.stderr.writable, { preventClose: true });
-    const { code } = await process.status;
-
-    console.assert(code === 0);
-}
-
 const metadataFile = Deno.args[0];
 if (!metadataFile) {
     console.error("Usage: <metadata file>");
@@ -140,16 +137,19 @@ const guid = md.metadata.guid;
 
 const ccURL = captionURL(md);
 const mainManifestURL = md.urls.playbackStandard;
+const thumbURL = md.thumbnail.image;
+const thumbExt = getExtension(thumbURL);
 const mainManifestFile = fileSuffix(md, "-MainManifest.m3u8");
 const ccFile = fileSuffix(md, "-English.srt");
 const mp4File = fileSuffix(md, ".mp4");
 const subFile = fileSuffix(md, "-Subtitles.mp4");
+const thumbFile = fileSuffix(md, "-Thumbnail"+getExtension(thumbExt));
 
 Deno.mkdir(guid, { recursive: true });
 
 await fetchToFile(ccURL, ccFile);
+await fetchBinaryFile(thumbURL, thumbFile);
 await fetchToFile(mainManifestURL, mainManifestFile);
 const bestPlaylist = await getBestQualityPlaylist(mainManifestFile);
 const playlistURL = getPlaylistURL(mainManifestURL, bestPlaylist);
 await runFFmpeg(playlistURL, mp4File);
-await runSubtitles(mp4File, ccFile, subFile);
